@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Информация о книге -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        {% if book.cover_filename %}
+                            <img src="{{ url_for('static', filename='uploads/' + book.cover_filename) }}" 
+                                 class="img-fluid rounded shadow-sm" alt="{{ book.title }}">
+                        {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                 style="height: 300px;">
+                                <i class="fas fa-book fa-4x text-muted"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8">
+                        <h1 class="h2 mb-3">{{ book.title }}</h1>
+                        
+                        <div class="book-details">
+                            <p><strong>Автор:</strong> {{ book.author }}</p>
+                            <p><strong>Издательство:</strong> {{ book.publisher }}</p>
+                            <p><strong>Год издания:</strong> {{ book.publication_year }}</p>
+                            <p><strong>Количество страниц:</strong> {{ book.page_count }}</p>
+                            <p><strong>Жанры:</strong> {{ book.genres or 'Не указаны' }}</p>
+                        </div>
+                        
+                        <!-- Рейтинг -->
+                        {% if reviews %}
+                            {% set avg_rating = reviews | selectattr('rating') | map(attribute='rating') | list | avg %}
+                            <div class="mb-3">
+                                <h6>Средняя оценка:</h6>
+                                <div class="rating-display">
+                                    {% for i in range(1, 6) %}
+                                        {% if i <= avg_rating %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% else %}
+                                            <i class="far fa-star text-warning"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span class="ms-2 text-muted">({{ "%.1f"|format(avg_rating) }} из 5)</span>
+                                </div>
+                                <small class="text-muted">{{ reviews|length }} рецензий</small>
+                            </div>
+                        {% else %}
+                            <div class="mb-3">
+                                <span class="text-muted">Пока нет оценок</span>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Действия -->
+                        {% if current_user %}
+                            <div class="btn-group-vertical d-grid gap-2" role="group">
+                                {% if current_user.role_name == 'user' %}
+                                    <button type="button" class="btn btn-success" 
+                                            onclick="showAddToCollectionModal({{ book.id }})">
+                                        <i class="fas fa-bookmark"></i> Добавить в подборку
+                                    </button>
+                                {% endif %}
+                                
+                                {% if current_user.role_name in ['administrator', 'moderator'] %}
+                                    <a href="{{ url_for('edit_book', book_id=book.id) }}" 
+                                       class="btn btn-outline-warning">
+                                        <i class="fas fa-edit"></i> Редактировать
+                                    </a>
+                                {% endif %}
+                                
+                                {% if current_user.role_name == 'administrator' %}
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            onclick="confirmDelete({{ book.id }}, '{{ book.title }}')">
+                                        <i class="fas fa-trash"></i> Удалить
+                                    </button>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Описание книги -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-align-left"></i> Описание</h5>
+            </div>
+            <div class="card-body">
+                <div class="book-description">
+                    {{ book.short_description | safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Сайдбар с дополнительной информацией -->
+    <div class="col-lg-4">
+        <!-- Статистика книги -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-chart-bar"></i> Статистика</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-primary mb-0">{{ reviews|length }}</h4>
+                            <small class="text-muted">Рецензий</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success mb-0">{{ book.page_count }}</h4>
+                        <small class="text-muted">Страниц</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Информация для администраторов -->
+        {% if current_user and current_user.role_name == 'administrator' %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-info-circle"></i> Административная информация</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>ID книги:</strong> {{ book.id }}</p>
+                <p><strong>Количество рецензий:</strong> {{ reviews|length }}</p>
+                <p><strong>Одобренных рецензий:</strong> {{ reviews|length }}</p>
+                {% if user_review %}
+                    <p><strong>Ваша рецензия:</strong> 
+                        <span class="badge 
+                            {% if user_review.status_id == 1 %}bg-warning
+                            {% elif user_review.status_id == 2 %}bg-success
+                            {% else %}bg-danger{% endif %}">
+                            {% if user_review.status_id == 1 %}На рассмотрении
+                            {% elif user_review.status_id == 2 %}Одобрена
+                            {% else %}Отклонена{% endif %}
+                        </span>
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Подборки с этой книгой (для пользователей) -->
+        {% if current_user and current_user.role_name == 'user' %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-bookmark"></i> В ваших подборках</h6>
+            </div>
+            <div class="card-body">
+                <div id="userCollectionsWithBook">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Рецензии -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-comments"></i> Рецензии</h5>
+                
+                {% if current_user and not user_review %}
+                    <a href="{{ url_for('add_review', book_id=book.id) }}" 
+                       class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Написать рецензию
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if user_review %}
+                    <!-- Рецензия текущего пользователя -->
+                    <div class="alert 
+                        {% if user_review.status_id == 1 %}alert-warning
+                        {% elif user_review.status_id == 2 %}alert-info
+                        {% else %}alert-danger{% endif %}">
+                        <h6><i class="fas fa-user"></i> Ваша рецензия</h6>
+                        <div class="mb-2">
+                            {% for i in range(1, 6) %}
+                                {% if i <= user_review.rating %}
+                                    <i class="fas fa-star text-warning"></i>
+                                {% else %}
+                                    <i class="far fa-star text-warning"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span class="ms-2">{{ user_review.rating }} из 5</span>
+                        </div>
+                        <div class="review-text">
+                            {{ user_review.text | safe }}
+                        </div>
+                        <small class="text-muted">
+                            Добавлено {{ user_review.created_at if user_review.created_at else 'недавно' }}
+                            {% if user_review.status_id == 1 %}
+                                <span class="badge bg-warning ms-2">На рассмотрении</span>
+                            {% elif user_review.status_id == 2 %}
+                                <span class="badge bg-success ms-2">Одобрена</span>
+                            {% elif user_review.status_id == 3 %}
+                                <span class="badge bg-danger ms-2">Отклонена</span>
+                            {% endif %}
+                        </small>
+                    </div>
+                {% endif %}
+                
+                {% if reviews %}
+                    {% for review in reviews %}
+                        <div class="review-item border-bottom pb-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1">
+                                        {{ review.last_name }} {{ review.first_name }}
+                                        {% if review.middle_name %}{{ review.middle_name }}{% endif %}
+                                    </h6>
+                                    <div class="rating mb-1">
+                                        {% for i in range(1, 6) %}
+                                            {% if i <= review.rating %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-warning"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                        <span class="ms-2 text-muted">{{ review.rating }} из 5</span>
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    {{ review.created_at if review.created_at else 'недавно' }}
+                                </small>
+                            </div>
+                            <div class="review-text">
+                                {{ review.text | safe }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Пока нет рецензий на эту книгу.</p>
+                        {% if current_user and not user_review %}
+                            <p class="text-muted">Станьте первым, кто оставит рецензию!</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(bookId, bookTitle) {
+    document.getElementById('deleteMessage').textContent = 
+        'Вы уверены, что хотите удалить книгу "' + bookTitle + '"?';
+    document.getElementById('deleteForm').action = '/book/' + bookId + '/delete';
+    
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+// Загрузка подборок пользователя с этой книгой
+{% if current_user and current_user.role_name == 'user' %}
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserCollectionsWithBook({{ book.id }});
+});
+
+function loadUserCollectionsWithBook(bookId) {
+    // Здесь можно добавить запрос для получения подборок, в которых есть эта книга
+    document.getElementById('userCollectionsWithBook').innerHTML = 
+        '<p class="text-muted mb-0">Эта книга пока не добавлена ни в одну подборку.</p>';
+}
+{% endif %}
+</script>
+{% endblock %}

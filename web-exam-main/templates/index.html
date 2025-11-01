@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">📚 Каталог книг</h1>
+            {% if current_user and current_user.role_name == 'administrator' %}
+                <a href="{{ url_for('add_book') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Добавить книгу
+                </a>
+            {% endif %}
+        </div>
+
+        <!-- Форма поиска (Вариант 3) -->
+        <div class="search-form">
+            <h5 class="mb-3"><i class="fas fa-search"></i> Поиск книг</h5>
+            <form method="GET" action="{{ url_for('index') }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Название</label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   value="{{ search_params.title or '' }}" 
+                                   placeholder="Введите название книги...">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="author" class="form-label">Автор</label>
+                            <input type="text" class="form-control" id="author" name="author" 
+                                   value="{{ search_params.author or '' }}" 
+                                   placeholder="Введите имя автора...">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="genres" class="form-label">Жанры</label>
+                            <select class="form-select" id="genres" name="genres" multiple size="4">
+                                {% for genre in all_genres %}
+                                    <option value="{{ genre.id }}"
+                                        {% if genre.id|string in search_params.genres %}selected{% endif %}>
+                                        {{ genre.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Удерживайте Ctrl для выбора нескольких жанров</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="years" class="form-label">Год издания</label>
+                            <select class="form-select" id="years" name="years" multiple size="4">
+                                {% for year in all_years %}
+                                    <option value="{{ year.publication_year }}"
+                                        {% if year.publication_year|string in search_params.years %}selected{% endif %}>
+                                        {{ year.publication_year }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Удерживайте Ctrl для выбора нескольких лет</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Количество страниц</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="page_from" 
+                                           value="{{ search_params.page_from or '' }}" 
+                                           placeholder="От" min="1">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="page_to" 
+                                           value="{{ search_params.page_to or '' }}" 
+                                           placeholder="До" min="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Найти
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Сбросить
+                    </a>
+                </div>
+                
+                <!-- Скрытые поля для сохранения номера страницы при поиске -->
+                {% if request.args.get('page') and request.args.get('page') != '1' %}
+                    <input type="hidden" name="page" value="1">
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Популярные книги (Вариант 4) -->
+        {% if popular_books %}
+            <div class="popular-books">
+                <h5 class="mb-3"><i class="fas fa-fire"></i> Популярные книги за последние 3 месяца</h5>
+                <div class="row">
+                    {% for book in popular_books %}
+                        <div class="col-md-2 col-sm-4 col-6 mb-3">
+                            <div class="card h-100">
+                                {% if book.cover_filename %}
+                                    <img src="{{ url_for('static', filename='uploads/' + book.cover_filename) }}" 
+                                         class="card-img-top" alt="{{ book.title }}" 
+                                         style="height: 150px; object-fit: cover;">
+                                {% else %}
+                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                         style="height: 150px;">
+                                        <i class="fas fa-book fa-2x text-muted"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="card-body p-2">
+                                    <h6 class="card-title small">{{ book.title|truncate(30) }}</h6>
+                                    <small class="text-muted">{{ book.author|truncate(25) }}</small>
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('view_book', book_id=book.id) }}" 
+                                           class="btn btn-outline-primary btn-sm w-100">
+                                            <i class="fas fa-eye"></i> Смотреть
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Недавно просмотренные книги (Вариант 4) -->
+        {% if recent_books %}
+            <div class="recent-books">
+                <h5 class="mb-3"><i class="fas fa-history"></i> Недавно просмотренные книги</h5>
+                <div class="row">
+                    {% for book in recent_books %}
+                        <div class="col-md-2 col-sm-4 col-6 mb-3">
+                            <div class="card h-100">
+                                {% if book.cover_filename %}
+                                    <img src="{{ url_for('static', filename='uploads/' + book.cover_filename) }}" 
+                                         class="card-img-top" alt="{{ book.title }}" 
+                                         style="height: 150px; object-fit: cover;">
+                                {% else %}
+                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                         style="height: 150px;">
+                                        <i class="fas fa-book fa-2x text-muted"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="card-body p-2">
+                                    <h6 class="card-title small">{{ book.title|truncate(30) }}</h6>
+                                    <small class="text-muted">{{ book.author|truncate(25) }}</small>
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('view_book', book_id=book.id) }}" 
+                                           class="btn btn-outline-primary btn-sm w-100">
+                                            <i class="fas fa-eye"></i> Смотреть
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if books %}
+            <div class="row">
+                {% for book in books %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <!-- Обложка -->
+                            {% if book.cover_filename %}
+                                <img src="{{ url_for('static', filename='uploads/' + book.cover_filename) }}" 
+                                     class="card-img-top" alt="{{ book.title }}" 
+                                     style="height: 300px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                     style="height: 300px;">
+                                    <i class="fas fa-book fa-3x text-muted"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{ book.title }}</h5>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <strong>Автор:</strong> {{ book.author }}<br>
+                                        <strong>Год:</strong> {{ book.publication_year }}<br>
+                                        <strong>Жанры:</strong> {{ book.genres or 'Не указаны' }}<br>
+                                        <strong>Страниц:</strong> {{ book.page_count }}
+                                    </small>
+                                </div>
+                                
+                                <!-- Рейтинг -->
+                                <div class="mb-2">
+                                    {% if book.avg_rating > 0 %}
+                                        <div class="text-warning">
+                                            {% for i in range(1, 6) %}
+                                                {% if i <= book.avg_rating %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <span class="text-muted ms-1">({{ "%.1f"|format(book.avg_rating) }})</span>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Нет оценок</span>
+                                    {% endif %}
+                                    <small class="text-muted">{{ book.review_count }} рецензий</small>
+                                </div>
+                                
+                                <!-- Кнопки действий -->
+                                <div class="mt-auto">
+                                    <div class="d-grid gap-2">
+                                        <a href="{{ url_for('view_book', book_id=book.id) }}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-eye"></i> Просмотр
+                                        </a>
+                                        
+                                        {% if current_user and current_user.role_name == 'user' %}
+                                            <button type="button" class="btn btn-outline-success btn-sm" 
+                                                    onclick="showAddToCollectionModal({{ book.id }})">
+                                                <i class="fas fa-bookmark"></i> В подборку
+                                            </button>
+                                        {% endif %}
+                                        
+                                        {% if current_user and current_user.role_name == 'administrator' %}
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('edit_book', book_id=book.id) }}" class="btn btn-outline-warning btn-sm">
+                                                    <i class="fas fa-edit"></i> Редактировать
+                                                </a>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                        onclick="confirmDelete({{ book.id }}, '{{ book.title }}')">
+                                                    <i class="fas fa-trash"></i> Удалить
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Пагинация -->
+            {% if total_pages > 1 %}
+                <nav aria-label="Навигация по страницам" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('index', page=page-1, **search_params) }}">
+                                    <i class="fas fa-chevron-left"></i> Предыдущая
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for page_num in range(1, total_pages + 1) %}
+                            {% if page_num == page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% elif page_num <= 3 or page_num > total_pages - 3 or (page_num >= page - 1 and page_num <= page + 1) %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('index', page=page_num, **search_params) }}">{{ page_num }}</a>
+                                </li>
+                            {% elif page_num == 4 or page_num == total_pages - 3 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('index', page=page+1, **search_params) }}">
+                                    Следующая <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                <h3 class="text-muted">Книги не найдены</h3>
+                {% if search_params.title or search_params.author or search_params.genres or search_params.years or search_params.page_from or search_params.page_to %}
+                    <p class="text-muted">По заданным критериям поиска книги не найдены. Попробуйте изменить параметры поиска.</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-times"></i> Сбросить фильтры
+                    </a>
+                {% else %}
+                    <p class="text-muted">В библиотеке пока нет книг.</p>
+                    {% if current_user and current_user.role_name == 'administrator' %}
+                        <a href="{{ url_for('add_book') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Добавить первую книгу
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

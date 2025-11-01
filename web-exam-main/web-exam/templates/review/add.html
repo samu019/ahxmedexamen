@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Рецензия на "{{ book.title }}" - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Информация о книге -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        {% if book.cover_filename %}
+                            <img src="{{ url_for('static', filename='uploads/' + book.cover_filename) }}" 
+                                 class="img-fluid rounded" alt="{{ book.title }}">
+                        {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                 style="height: 200px;">
+                                <i class="fas fa-book fa-3x text-muted"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                        <h3>{{ book.title }}</h3>
+                        <p><strong>Автор:</strong> {{ book.author }}</p>
+                        <p><strong>Издательство:</strong> {{ book.publisher }}</p>
+                        <p><strong>Год:</strong> {{ book.publication_year }}</p>
+                        <a href="{{ url_for('view_book', book_id=book.id) }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Вернуться к книге
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Форма рецензии -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-star"></i> Написать рецензию
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="reviewForm">
+                    <!-- Оценка -->
+                    <div class="mb-4">
+                        <label class="form-label">Ваша оценка <span class="text-danger">*</span></label>
+                        <div class="star-rating mb-2">
+                            {% for i in range(5, 0, -1) %}
+                                <i class="rating-star far fa-star" data-rating="{{ i }}" 
+                                   style="font-size: 1.5rem; cursor: pointer; color: #dee2e6; margin-right: 0.25rem;"></i>
+                            {% endfor %}
+                        </div>
+                        
+                        <select class="form-select" id="rating" name="rating" required style="max-width: 300px;">
+                            <option value="5" selected>5 – отлично</option>
+                            <option value="4">4 – хорошо</option>
+                            <option value="3">3 – удовлетворительно</option>
+                            <option value="2">2 – неудовлетворительно</option>
+                            <option value="1">1 – плохо</option>
+                            <option value="0">0 – ужасно</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Текст рецензии -->
+                    <div class="mb-4">
+                        <label for="text" class="form-label">Текст рецензии <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="review_text" name="text" 
+                                  rows="12" required 
+                                  placeholder="Поделитесь своими впечатлениями о книге...">{{ request.form.text or '' }}</textarea>
+                        <div class="form-text">
+                            Поддерживается форматирование Markdown. Расскажите о своих впечатлениях, что понравилось или не понравилось в книге.
+                        </div>
+                    </div>
+                    
+                    <!-- Информация о модерации -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Обратите внимание:</strong> Ваша рецензия будет отправлена на модерацию и появится на сайте после одобрения модератором.
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('view_book', book_id=book.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Отправить рецензию
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Советы по написанию рецензии -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-lightbulb"></i> Советы по написанию рецензии
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Опишите, что вам понравилось или не понравилось в книге</li>
+                    <li>Поделитесь своими эмоциями от прочтения</li>
+                    <li>Расскажите о персонажах, сюжете, стиле автора</li>
+                    <li>Укажите, кому бы вы рекомендовали эту книгу</li>
+                    <li>Избегайте спойлеров, которые могут испортить впечатление другим читателям</li>
+                    <li>Будьте конструктивны в критике</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Инициализация рейтинга звездочками
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.rating-star');
+    const ratingSelect = document.getElementById('rating');
+    
+    // Установить начальный рейтинг
+    setStarRating(5);
+    
+    stars.forEach((star, index) => {
+        star.addEventListener('mouseenter', function() {
+            const rating = parseInt(this.dataset.rating);
+            highlightStars(rating);
+        });
+        
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            ratingSelect.value = rating;
+            setStarRating(rating);
+        });
+    });
+    
+    // Восстановить рейтинг при уходе мыши
+    const ratingContainer = document.querySelector('.star-rating');
+    ratingContainer.addEventListener('mouseleave', function() {
+        setStarRating(parseInt(ratingSelect.value));
+    });
+    
+    // Синхронизация с select
+    ratingSelect.addEventListener('change', function() {
+        setStarRating(parseInt(this.value));
+    });
+    
+    function highlightStars(rating) {
+        stars.forEach((star, index) => {
+            const starRating = parseInt(star.dataset.rating);
+            if (starRating <= rating) {
+                star.classList.remove('far');
+                star.classList.add('fas');
+                star.style.color = '#ffc107';
+            } else {
+                star.classList.remove('fas');
+                star.classList.add('far');
+                star.style.color = '#dee2e6';
+            }
+        });
+    }
+    
+    function setStarRating(rating) {
+        highlightStars(rating);
+    }
+});
+
+// Валидация формы
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    const rating = document.getElementById('rating').value;
+    const text = document.getElementById('review_text').value.trim();
+    
+    if (!rating || !text) {
+        e.preventDefault();
+        alert('Пожалуйста, укажите оценку и напишите текст рецензии');
+        return false;
+    }
+    
+    if (text.length < 10) {
+        e.preventDefault();
+        alert('Рецензия должна содержать как минимум 10 символов');
+        return false;
+    }
+});
+
+// Предупреждение о несохраненных изменениях
+let formChanged = false;
+const form = document.getElementById('reviewForm');
+const inputs = form.querySelectorAll('input, textarea, select');
+
+inputs.forEach(input => {
+    input.addEventListener('input', () => {
+        formChanged = true;
+    });
+});
+
+window.addEventListener('beforeunload', function(e) {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+form.addEventListener('submit', () => {
+    formChanged = false;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Добавление книги - Электронная библиотека{% endblock %}
+
+{% block head %}
+<style>
+.image-preview {
+    max-width: 200px;
+    max-height: 300px;
+    border-radius: 0.375rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-plus"></i> Добавление новой книги
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="bookForm">
+                    {% include 'book/_form_fields.html' %}
+                    
+                    <!-- Поле для загрузки обложки -->
+                    <div class="mb-3">
+                        <label for="cover" class="form-label">Обложка книги</label>
+                        <input type="file" class="form-control" id="cover" name="cover" 
+                               accept="image/*" onchange="previewImage(this)">
+                        <div class="form-text">
+                            Поддерживаемые форматы: JPG, PNG, GIF. Максимальный размер: 16 МБ
+                        </div>
+                        
+                        <!-- Предварительный просмотр изображения -->
+                        <div id="imagePreviewContainer" style="display: none;" class="mt-3">
+                            <p class="mb-2"><strong>Предварительный просмотр:</strong></p>
+                            <img id="imagePreview" class="image-preview" alt="Предварительный просмотр">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Сохранить книгу
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Функция предварительного просмотра изображения
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            previewContainer.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        previewContainer.style.display = 'none';
+    }
+}
+
+// Валидация формы перед отправкой
+document.getElementById('bookForm').addEventListener('submit', function(e) {
+    const requiredFields = ['title', 'short_description', 'publication_year', 'publisher', 'author', 'page_count'];
+    let isValid = true;
+    
+    requiredFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    // Проверка выбора жанров
+    const genreSelect = document.getElementById('genres');
+    if (genreSelect.selectedOptions.length === 0) {
+        genreSelect.classList.add('is-invalid');
+        isValid = false;
+    } else {
+        genreSelect.classList.remove('is-invalid');
+    }
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Пожалуйста, заполните все обязательные поля');
+    }
+});
+</script>
+{% endblock %}

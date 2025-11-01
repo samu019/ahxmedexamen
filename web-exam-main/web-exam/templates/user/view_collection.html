@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ collection.name }} - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('my_collections') }}">Мои подборки</a></li>
+                <li class="breadcrumb-item active">{{ collection.name }}</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="fas fa-folder-open"></i> {{ collection.name }}
+            </h1>
+            <div>
+                <span class="badge bg-primary fs-6 me-2">{{ books|length }} книг</span>
+                <a href="{{ url_for('my_collections') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Назад к подборкам
+                </a>
+            </div>
+        </div>
+
+        {% if books %}
+            <div class="row">
+                {% for book in books %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <!-- Обложка -->
+                            {% if book.cover_filename %}
+                                <img src="{{ url_for('static', filename='uploads/' + book.cover_filename) }}" 
+                                     class="card-img-top" alt="{{ book.title }}" 
+                                     style="height: 300px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                     style="height: 300px;">
+                                    <i class="fas fa-book fa-3x text-muted"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{ book.title }}</h5>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <strong>Автор:</strong> {{ book.author }}<br>
+                                        <strong>Год:</strong> {{ book.publication_year }}<br>
+                                        <strong>Жанры:</strong> {{ book.genres or 'Не указаны' }}<br>
+                                        <strong>Страниц:</strong> {{ book.page_count }}
+                                    </small>
+                                </div>
+                                
+                                <!-- Рейтинг -->
+                                <div class="mb-2">
+                                    {% if book.avg_rating > 0 %}
+                                        <div class="text-warning">
+                                            {% for i in range(1, 6) %}
+                                                {% if i <= book.avg_rating %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <span class="text-muted ms-1">({{ "%.1f"|format(book.avg_rating) }})</span>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Нет оценок</span>
+                                    {% endif %}
+                                    <small class="text-muted">{{ book.review_count }} рецензий</small>
+                                </div>
+                                
+                                <!-- Дата добавления в подборку -->
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-plus-circle"></i>
+                                        Добавлена: {{ book.added_at if book.added_at else 'Недавно' }}
+                                    </small>
+                                </div>
+                                
+                                <!-- Кнопки действий -->
+                                <div class="mt-auto">
+                                    <div class="d-grid gap-2">
+                                        <a href="{{ url_for('view_book', book_id=book.id) }}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-eye"></i> Просмотр
+                                        </a>
+                                        
+                                        <form method="POST" 
+                                              action="{{ url_for('remove_from_collection', collection_id=collection.id, book_id=book.id) }}"
+                                              onsubmit="return confirm('Удалить книгу &quot;{{ book.title }}&quot; из подборки?')">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                                <i class="fas fa-times"></i> Удалить из подборки
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                <h3 class="text-muted">Подборка пуста</h3>
+                <p class="text-muted">В этой подборке пока нет книг. Добавьте книги из каталога!</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-book"></i> Перейти к каталогу
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

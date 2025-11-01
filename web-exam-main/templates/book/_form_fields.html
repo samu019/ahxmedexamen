@@ -1,0 +1,101 @@
+<!-- Название книги -->
+<div class="mb-3">
+    <label for="title" class="form-label">Название книги <span class="text-danger">*</span></label>
+    <input type="text" class="form-control" id="title" name="title" 
+           value="{{ book.title if book else request.form.title or '' }}" 
+           required maxlength="255">
+</div>
+
+<!-- Автор -->
+<div class="mb-3">
+    <label for="author" class="form-label">Автор <span class="text-danger">*</span></label>
+    <input type="text" class="form-control" id="author" name="author" 
+           value="{{ book.author if book else request.form.author or '' }}" 
+           required maxlength="255">
+</div>
+
+<!-- Издательство -->
+<div class="mb-3">
+    <label for="publisher" class="form-label">Издательство <span class="text-danger">*</span></label>
+    <input type="text" class="form-control" id="publisher" name="publisher" 
+           value="{{ book.publisher if book else request.form.publisher or '' }}" 
+           required maxlength="255">
+</div>
+
+<!-- Год издания и количество страниц в одной строке -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="publication_year" class="form-label">Год издания <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="publication_year" name="publication_year" 
+                   value="{{ book.publication_year if book else request.form.publication_year or '' }}" 
+                   required min="1000" max="2030">
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="page_count" class="form-label">Количество страниц <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="page_count" name="page_count" 
+                   value="{{ book.page_count if book else request.form.page_count or '' }}" 
+                   required min="1">
+        </div>
+    </div>
+</div>
+
+<!-- Жанры -->
+<div class="mb-3">
+    <label for="genres" class="form-label">Жанры <span class="text-danger">*</span></label>
+    <select class="form-select" id="genres" name="genres" multiple required size="6">
+        {% for genre in genres %}
+            <option value="{{ genre.id }}"
+                {% if book and book.genre_ids and genre.id|string in book.genre_ids.split(',') %}
+                    selected
+                {% elif request.form.getlist('genres') and genre.id|string in request.form.getlist('genres') %}
+                    selected
+                {% endif %}>
+                {{ genre.name }}
+            </option>
+        {% endfor %}
+    </select>
+    <div class="form-text">
+        Удерживайте Ctrl (Cmd на Mac) для выбора нескольких жанров
+    </div>
+</div>
+
+<!-- Краткое описание -->
+<div class="mb-3">
+    <label for="short_description" class="form-label">Краткое описание <span class="text-danger">*</span></label>
+    <textarea class="form-control" id="short_description" name="short_description" 
+              rows="10" required>{{ book.short_description if book else request.form.short_description or '' }}</textarea>
+    <div class="form-text">
+        Поддерживается форматирование Markdown. Используйте редактор для удобства.
+    </div>
+</div>
+
+<script>
+// Инициализация EasyMDE только для поля описания
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('short_description')) {
+        const easyMDE = new EasyMDE({
+            element: document.getElementById('short_description'),
+            spellChecker: false,
+            placeholder: 'Введите краткое описание книги...',
+            toolbar: [
+                'bold', 'italic', 'heading', '|',
+                'quote', 'unordered-list', 'ordered-list', '|',
+                'link', 'image', '|',
+                'preview', 'side-by-side', 'fullscreen', '|',
+                'guide'
+            ],
+            autosave: {
+                enabled: false
+            },
+            renderingConfig: {
+                singleLineBreaks: false,
+                codeSyntaxHighlighting: true,
+            },
+            status: ['lines', 'words', 'cursor'],
+        });
+    }
+});
+</script>

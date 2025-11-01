@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика просмотров книг - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('statistics') }}">Статистика</a></li>
+                <li class="breadcrumb-item active">Статистика просмотров книг</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-eye"></i> Статистика просмотров книг
+            </h2>
+            <span class="badge bg-primary fs-6">{{ total_books }} книг</span>
+        </div>
+
+        <!-- Форма фильтрации -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Фильтрация по периоду</h5>
+            </div>
+            <div class="card-body">
+                <form class="row g-3" method="GET">
+                    <div class="col-md-4">
+                        <label for="date_from" class="form-label">Дата от</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" 
+                               value="{{ date_from or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="date_to" class="form-label">Дата до</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" 
+                               value="{{ date_to or '' }}">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-filter"></i> Применить
+                        </button>
+                        <a href="{{ url_for('book_views_stats') }}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-times"></i> Сбросить
+                        </a>
+                        <a href="{{ url_for('export_book_views_csv', date_from=date_from, date_to=date_to) }}" 
+                           class="btn btn-success">
+                            <i class="fas fa-download"></i> CSV
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Показать текущий период фильтрации -->
+        {% if date_from or date_to %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Период фильтрации:</strong>
+                {% if date_from and date_to %}
+                    с {{ date_from }} по {{ date_to }}
+                {% elif date_from %}
+                    с {{ date_from }}
+                {% else %}
+                    до {{ date_to }}
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if book_stats %}
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>№</th>
+                                <th>Название книги</th>
+                                <th>Количество просмотров</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in book_stats %}
+                                <tr>
+                                    <td>{{ (page - 1) * 10 + loop.index }}</td>
+                                    <td>{{ stat.title }}</td>
+                                    <td>
+                                        <span class="badge bg-success fs-6">{{ stat.total_views }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Пагинация -->
+            {% if total_pages > 1 %}
+                <nav aria-label="Навигация по страницам" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('book_views_stats', page=page-1, date_from=date_from, date_to=date_to) }}">
+                                    <i class="fas fa-chevron-left"></i> Предыдущая
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for page_num in range(1, total_pages + 1) %}
+                            {% if page_num == page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('book_views_stats', page=page_num, date_from=date_from, date_to=date_to) }}">{{ page_num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('book_views_stats', page=page+1, date_from=date_from, date_to=date_to) }}">
+                                    Следующая <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                <h3 class="text-muted">Нет данных</h3>
+                <p class="text-muted">Статистика просмотров книг отсутствует для выбранного периода.</p>
+                <a href="{{ url_for('statistics') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Назад к статистике
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

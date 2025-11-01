@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование "{{ book.title }}" - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-edit"></i> Редактирование книги
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="bookForm">
+                    {% include 'book/_form_fields.html' %}
+                    
+                    <!-- Информация об обложке (без возможности изменения) -->
+                    <div class="mb-3">
+                        <label class="form-label">Текущая обложка</label>
+                        <div class="border rounded p-3 bg-light">
+                            <p class="mb-2">
+                                <i class="fas fa-info-circle text-info"></i> 
+                                Обложка устанавливается при создании книги и не может быть изменена.
+                            </p>
+                            {% if book.cover_filename %}
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ url_for('static', filename='uploads/' + book.cover_filename) }}" 
+                                         alt="{{ book.title }}" 
+                                         style="max-width: 100px; max-height: 150px;" 
+                                         class="rounded me-3">
+                                    <div>
+                                        <p class="mb-1"><strong>Файл:</strong> {{ book.cover_filename }}</p>
+                                        <p class="mb-0 text-muted">Обложка загружена</p>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <p class="mb-0 text-muted">
+                                    <i class="fas fa-image"></i> Обложка не установлена
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('view_book', book_id=book.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Дополнительная информация -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Дополнительная информация
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>ID книги:</strong> {{ book.id }}</p>
+                        <p><strong>Дата создания:</strong> Информация недоступна</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Количество рецензий:</strong> 
+                            <a href="{{ url_for('view_book', book_id=book.id) }}#reviews">
+                                Посмотреть рецензии
+                            </a>
+                        </p>
+                        <p><strong>Средняя оценка:</strong> Рассчитывается автоматически</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Валидация формы перед отправкой
+document.getElementById('bookForm').addEventListener('submit', function(e) {
+    const requiredFields = ['title', 'short_description', 'publication_year', 'publisher', 'author', 'page_count'];
+    let isValid = true;
+    
+    requiredFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    // Проверка выбора жанров
+    const genreSelect = document.getElementById('genres');
+    if (genreSelect.selectedOptions.length === 0) {
+        genreSelect.classList.add('is-invalid');
+        isValid = false;
+    } else {
+        genreSelect.classList.remove('is-invalid');
+    }
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Пожалуйста, заполните все обязательные поля');
+    }
+});
+
+// Предупреждение о несохраненных изменениях
+let formChanged = false;
+const form = document.getElementById('bookForm');
+const inputs = form.querySelectorAll('input, textarea, select');
+
+inputs.forEach(input => {
+    input.addEventListener('change', () => {
+        formChanged = true;
+    });
+});
+
+window.addEventListener('beforeunload', function(e) {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+form.addEventListener('submit', () => {
+    formChanged = false;
+});
+</script>
+{% endblock %}

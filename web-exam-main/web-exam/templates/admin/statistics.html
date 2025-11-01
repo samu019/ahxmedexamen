@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика - Электронная библиотека{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="h2 mb-4">
+            <i class="fas fa-chart-bar"></i> Статистика системы
+        </h1>
+
+        <!-- Навигация по вкладкам -->
+        <ul class="nav nav-tabs" id="statisticsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="user-actions-tab" data-bs-toggle="tab" data-bs-target="#user-actions" type="button" role="tab" aria-controls="user-actions" aria-selected="true">
+                    <i class="fas fa-user-clock"></i> Журнал действий пользователей
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="book-views-tab" data-bs-toggle="tab" data-bs-target="#book-views" type="button" role="tab" aria-controls="book-views" aria-selected="false">
+                    <i class="fas fa-eye"></i> Статистика просмотра книг
+                </button>
+            </li>
+        </ul>
+
+        <!-- Содержимое вкладок -->
+        <div class="tab-content mt-4" id="statisticsTabContent">
+            <!-- Журнал действий пользователей -->
+            <div class="tab-pane fade show active" id="user-actions" role="tabpanel" aria-labelledby="user-actions-tab">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3>
+                        <i class="fas fa-user-clock"></i> Журнал действий пользователей
+                    </h3>
+                    <div>
+                        <span class="badge bg-primary fs-6 me-2" id="total-records-badge">Загрузка...</span>
+                        <button class="btn btn-success" onclick="exportUserActions()">
+                            <i class="fas fa-download"></i> Экспорт в CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="user-actions-content">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <p class="mt-3">Загрузка данных...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статистика просмотра книг -->
+            <div class="tab-pane fade" id="book-views" role="tabpanel" aria-labelledby="book-views-tab">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3>
+                        <i class="fas fa-eye"></i> Статистика просмотров книг
+                    </h3>
+                    <span class="badge bg-primary fs-6" id="total-books-badge">Загрузка...</span>
+                </div>
+
+                <!-- Форма фильтрации -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Фильтрация по периоду</h5>
+                    </div>
+                    <div class="card-body">
+                        <form class="row g-3" id="book-views-filter">
+                            <div class="col-md-4">
+                                <label for="date_from" class="form-label">Дата от</label>
+                                <input type="date" class="form-control" id="date_from" name="date_from">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="date_to" class="form-label">Дата до</label>
+                                <input type="date" class="form-control" id="date_to" name="date_to">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-filter"></i> Применить
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary me-2" onclick="clearBookViewsFilter()">
+                                    <i class="fas fa-times"></i> Сбросить
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="exportBookViews()">
+                                    <i class="fas fa-download"></i> CSV
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="book-views-content">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-info" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <p class="mt-3">Загрузка данных...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Загружаем журнал действий при загрузке страницы
+    loadUserActions();
+    
+    // Обработчик переключения вкладок
+    const bookViewsTab = document.getElementById('book-views-tab');
+    bookViewsTab.addEventListener('shown.bs.tab', function() {
+        loadBookViews();
+    });
+    
+    // Обработчик формы фильтрации
+    document.getElementById('book-views-filter').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadBookViews();
+    });
+});
+
+function loadUserActions(page = 1) {
+    fetch(`{{ url_for('user_actions_log') }}?page=${page}`)
+        .then(response => response.text())
+        .then(html => {
+            // Извлекаем только содержимое таблицы из полученного HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const content = doc.querySelector('.row .col-12');
+            
+            if (content) {
+                // Обновляем badge с количеством записей
+                const badge = content.querySelector('.badge');
+                if (badge) {
+                    document.getElementById('total-records-badge').textContent = badge.textContent;
+                }
+                
+                // Извлекаем таблицу и пагинацию
+                const table = content.querySelector('.card');
+                const pagination = content.querySelector('nav[aria-label="Навигация по страницам"]');
+                const emptyState = content.querySelector('.text-center.py-5');
+                
+                let contentHtml = '';
+                if (table) {
+                    contentHtml += table.outerHTML;
+                }
+                if (pagination) {
+                    contentHtml += pagination.outerHTML;
+                }
+                if (emptyState && !table) {
+                    contentHtml = emptyState.outerHTML;
+                }
+                
+                document.getElementById('user-actions-content').innerHTML = contentHtml;
+                
+                // Добавляем обработчики для ссылок пагинации
+                addPaginationHandlers('user-actions-content', loadUserActions);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки журнала действий:', error);
+            document.getElementById('user-actions-content').innerHTML = 
+                '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Ошибка загрузки данных</div>';
+        });
+}
+
+function loadBookViews(page = 1) {
+    const dateFrom = document.getElementById('date_from').value;
+    const dateTo = document.getElementById('date_to').value;
+    
+    let url = `{{ url_for('book_views_stats') }}?page=${page}`;
+    if (dateFrom) url += `&date_from=${dateFrom}`;
+    if (dateTo) url += `&date_to=${dateTo}`;
+    
+    fetch(url)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const content = doc.querySelector('.row .col-12');
+            
+            if (content) {
+                // Обновляем badge с количеством книг
+                const badge = content.querySelector('.badge');
+                if (badge) {
+                    document.getElementById('total-books-badge').textContent = badge.textContent;
+                }
+                
+                // Извлекаем таблицу и пагинацию
+                const table = content.querySelector('.card:not(.mb-4)'); // Исключаем карточку с фильтром
+                const pagination = content.querySelector('nav[aria-label="Навигация по страницам"]');
+                const emptyState = content.querySelector('.text-center.py-5');
+                const filterAlert = content.querySelector('.alert-info');
+                
+                let contentHtml = '';
+                if (filterAlert) {
+                    contentHtml += filterAlert.outerHTML;
+                }
+                if (table) {
+                    contentHtml += table.outerHTML;
+                }
+                if (pagination) {
+                    contentHtml += pagination.outerHTML;
+                }
+                if (emptyState && !table) {
+                    contentHtml = emptyState.outerHTML;
+                }
+                
+                document.getElementById('book-views-content').innerHTML = contentHtml;
+                
+                // Добавляем обработчики для ссылок пагинации
+                addPaginationHandlers('book-views-content', (page) => loadBookViews(page));
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки статистики книг:', error);
+            document.getElementById('book-views-content').innerHTML = 
+                '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Ошибка загрузки данных</div>';
+        });
+}
+
+function addPaginationHandlers(containerId, loadFunction) {
+    const container = document.getElementById(containerId);
+    const paginationLinks = container.querySelectorAll('.pagination .page-link');
+    
+    paginationLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = new URL(this.href);
+            const page = url.searchParams.get('page') || 1;
+            loadFunction(parseInt(page));
+        });
+    });
+}
+
+function clearBookViewsFilter() {
+    document.getElementById('date_from').value = '';
+    document.getElementById('date_to').value = '';
+    loadBookViews();
+}
+
+function exportUserActions() {
+    window.location.href = '{{ url_for("export_user_actions_csv") }}';
+}
+
+function exportBookViews() {
+    const dateFrom = document.getElementById('date_from').value;
+    const dateTo = document.getElementById('date_to').value;
+    
+    let url = '{{ url_for("export_book_views_csv") }}';
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+    
+    window.location.href = url;
+}
+</script>
+{% endblock %}
